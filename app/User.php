@@ -27,7 +27,7 @@ class User extends Authenticatable
         'password', 'remember_token',
     ];
     
-    
+    //インスタンスメソッド（インスタンスにしか使えない）
     public function microposts()
     {
         return $this->hasMany(Micropost::class);
@@ -82,4 +82,53 @@ public function unfollow($userId)
 public function is_following($userId) {
     return $this->followings()->where('follow_id', $userId)->exists();
 }
+
+     public function feed_microposts()
+    {
+        $follow_user_ids = $this->followings()-> pluck('users.id')->toArray();
+        $follow_user_ids[] = $this->id;
+        return Micropost::whereIn('user_id', $follow_user_ids);
+    }
+
+
+//favorite function
+public function user_favorites(){
+    return $this->belongsToMany(Micropost::class, 'user_favorite', 'user_id', 'micropost_id')->withTimestamps();
+}
+
+public function favorite($micropostId){
+    $exist = $this->is_favorite($micropostId);
+    
+if ($exist){
+        // do nothing if already following
+        return false;
+    } else {
+        // follow if not following
+        $this->user_favorites()->attach($micropostId);
+        return true;
+    }
+}
+
+public function unfavorite($micropostId)
+{
+    // confirming if already following
+    $exist = $this->is_favorite($micropostId);
+    // confirming that it is not you
+
+    if ($exist) {
+        // stop following if following
+        $this->user_favorites()->detach($micropostId);
+        return true;
+    } else {
+        // do nothing if not following
+        return false;
+    }
+}
+
+
+public function is_favorite($micropostId) {
+    return $this->user_favorites()->where('micropost_id', $micropostId)->exists();
+}
+
+
 }
